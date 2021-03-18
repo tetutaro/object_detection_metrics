@@ -23,9 +23,11 @@ setup(
     entry_points={
         'console_scripts': [
             'object_detection_metrics = object_detection_metrics:main',
+            'convert_coco_annotations = convert_coco_annotations:main',
         ],
     },
     packages=[
         'object_detection_metrics',
+        'convert_coco_annotations',
     ]
 )
