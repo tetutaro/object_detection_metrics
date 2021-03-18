@@ -3,6 +3,7 @@
 from __future__ import annotations
 from typing import List, Union
 from pydantic import BaseModel, validator
+import numpy as np
 
 
 class TrueBBox(BaseModel):
@@ -48,7 +49,42 @@ class GroundTruth(BaseModel):
     image_id: str
     bboxes: List[TrueBBox]
 
+    def to_ndarray(self: GroundTruth) -> np.ndarray:
+        if len(self.bboxes) > 0:
+            bboxes = np.stack([
+                np.array(bbox.bbox) for bbox in self.bboxes
+            ])
+        else:
+            bboxes = np.empty((0, 4))
+        classes = np.array([
+            bbox.class_id for bbox in self.bboxes
+        ])[:, np.newaxis]
+        array = np.concatenate(
+            (bboxes, classes), axis=1
+        )
+        return array
+
 
 class Prediction(BaseModel):
     image_id: str
     bboxes: List[PredBBox]
+
+    def to_ndarray(self: Prediction) -> np.ndarray:
+        if len(self.bboxes) > 0:
+            bboxes = np.stack([
+                np.array(bbox.bbox) for bbox in self.bboxes
+            ])
+        else:
+            bboxes = np.empty((0, 4))
+        classes = np.array([
+            bbox.class_id for bbox in self.bboxes
+        ])[:, np.newaxis]
+        scores = np.array([
+            bbox.score for bbox in self.bboxes
+        ])[:, np.newaxis]
+        array = np.concatenate(
+            (bboxes, scores, classes), axis=1
+        )
+        return array[
+            np.argsort(array[:, 4])[::-1]
+        ]
