@@ -3,7 +3,6 @@
 from __future__ import annotations
 from collections import defaultdict
 import numpy as np
-from sklearn.metrics import average_precision_score
 
 
 class BaseEval(object):
@@ -11,7 +10,6 @@ class BaseEval(object):
 
     Attributes:
         class_id (int): class id of detected object
-        use_sklearn (bool): use sklearn or not
         n_true (int): the number of ground truth bounding boxes
         n_pred (int): the number of predicted bounding boxes
         n_img (int): the number of images which has bouding box
@@ -29,17 +27,14 @@ class BaseEval(object):
     def __init__(
         self: BaseEval,
         class_id: int,
-        use_sklearn: bool = True
     ) -> None:
         '''initialize function of BaseEval
 
         Args:
             class_id (int): class id of detected object
-            use_sklearn (bool): use sklearn or not
         '''
         # store given values
         self.class_id = class_id
-        self.use_sklearn = use_sklearn
         # initialize internal attributes
         self.n_true = 0
         self.n_pred = 0
@@ -164,10 +159,16 @@ class BaseEval(object):
         self.n_true += true.shape[0]
         self.n_pred += pred.shape[0]
         self.n_img += 1
-        # if # of ground truths == 0 or # of predictions == 0,
-        # this image has no effect to the evaluaion.
-        # (only # of groud truths/predictions effect to the evaluation)
-        if true.shape[0] == 0 or pred.shape[0] == 0:
+        # if # of predictions == 0, just count up # of ground truth
+        if pred.shape[0] == 0:
+            return
+        # if # of ground truth == 0, all predictions are False-Positive
+        if true.shape[0] == 0:
+            for i in range(10):
+                th_ind = 50 + (i * 5)
+                tp = np.zeros((pred.shape[0], 1), dtype=np.int)
+                tp = np.concatenate([tp, pred[:, 4:5]], axis=1)
+                self.tps[th_ind].append(tp)
             return
         # calc IoU between ground truths and predictions
         iou = self.calc_iou(true=true[:, :4], pred=pred[:, :4])
@@ -179,36 +180,84 @@ class BaseEval(object):
             tp = self.calc_tp(iou=iou, threshold=threshold)
             ntp = tp.sum()
             assert ntp <= true.shape[0]
-            # if # of True-Positives == 0,
-            # this image has no effect to the evaluaion at that threshold.
-            if ntp == 0:
-                continue
             # unite True-Positives and confidence score
             tp = np.concatenate([tp, pred[:, 4:5]], axis=1)
             # store it
             self.tps[th_ind].append(tp)
         return
 
-    def calc_ap(tps: np.ndarray) -> float:
+    @staticmethod
+    def calc_auc(x: np.ndarray, y: np.ndarray) -> float:
+        '''calculate the area of interpolated curve
+
+        Args:
+            x (np.ndarray):
+                x-axis of interpolated curve.
+                to calc Average Precision, x is Recall.
+                to calc Average Recall, x is Precision.
+            y (np.ndarray):
+                y-axis of interpolated curve.
+                to calc Average Precision, y is Precision.
+                to calc Average Recall, y is Recall.
+        '''
+        area_points = list()
+        tmp_points = list(zip(x, y))
+        key_point = tmp_points[0]
+        # select the points to calc the area(area_points) from all points
+        # == interpolating the Precision-Recall/Recall-Precision curve
+        if len(tmp_points) == 1:
+            area_points.append(key_point)
+        else:
+            for i, tmp_point in enumerate(tmp_points[1:]):
+                if tmp_point[1] > key_point[1]:
+                    # tmp_y > key_y
+                    if tmp_point[0] < key_point[0]:
+                        # tmp_x < key_x and tmp_y > key_y
+                        # add key_point
+                        area_points.append(key_point)
+                    # update
+                    key_point = tmp_point
+                if i == len(tmp_points) - 2:
+                    # the last tmp_point
+                    # add key_point
+                    area_points.append(key_point)
+        # calc the area under the interpolated curve
+        auc = 0
+        base_x = 0
+        for area_point in area_points[::-1]:
+            auc += (area_point[0] - base_x) * area_point[1]
+            base_x = area_point[0]
+        return auc
+
+    def calc_ap(self: BaseEval, tps: np.ndarray) -> float:
         '''calculate Average Precision
 
         Args:
             tps (np.ndarray):
-                confidence score and True-Positives (N x 2).
-                tps[:, 0] is confidence score.
-                tps[:, 1] is True-Positive.
+                True-Positives and confidence score (N x 2).
+                tps[:, 0] is True-Positive.
+                tps[:, 1] is confidence score.
                 it is just a concatenated value from multiple images
                 and so it has not been sorted by confidence score.
 
         Returns:
             float: Average Precision
         '''
-        return 0.0
+        # sort in descending order of confidence score
+        tps = tps[np.argsort(tps[:, 1])[::-1]]
+        # calc accumulated True-Positives
+        acc_tp = np.cumsum(tps[:, 0])
+        # calc Precision and Recall
+        precision = acc_tp / np.array(list(range(1, self.n_pred + 1)))
+        recall = acc_tp / self.n_true
+        # calc Average Precision and Average Recall
+        ap = self.calc_auc(x=recall[::-1], y=precision[::-1])
+        return ap
 
     def accumulate(self: BaseEval) -> None:
         '''calc Average Precision of each IoU threshold for each class id
 
-        * calc Average Precision of each IoU threshold
+        * calc Average Precisions for each IoU threshold
         * store it to self.aps
         * calc Average Precision of IoU=0.50:0.95:0.05
         * store it to self.aps, too
@@ -234,10 +283,7 @@ class BaseEval(object):
             # unite tps(True-Positives and confidence score) of all images
             tps = np.concatenate(tps, axis=0)
             # calc Average Precision
-            if self.use_sklearn:
-                ap = average_precision_score(tps[:, 0], tps[:, 1])
-            else:
-                ap = self.calc_ap(tps=tps)
+            ap = self.calc_ap(tps=tps)
             # store it
             self.aps[th_ind] = ap
             aps_all.append(ap)

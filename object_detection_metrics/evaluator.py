@@ -185,13 +185,18 @@ class Evaluator(object):
         return
 
     def accumulate(self: Evaluator) -> None:
+        '''accumulate all Average Precisions
+        '''
         self.accm_start = time.perf_counter()
         for class_id in self.unique_classes:
             base = self.bases[class_id]
             if base.n_true == 0 and base.n_pred == 0:
+                # delete unused class id
                 del self.bases[class_id]
             else:
+                # calc Average Precision for each class
                 base.accumulate()
+        # accumulate all Average Precisions
         aps_all = list()
         for i in range(10):
             th_ind = 50 + (i * 5)
@@ -201,13 +206,34 @@ class Evaluator(object):
             ap = np.array(aps).mean()
             self.aps[th_ind] = ap
             aps_all.append(ap)
-        ap_all = np.array(aps_all).mean()
-        self.aps[100] = ap_all
+        self.aps[100] = np.array(aps_all).mean()
         self.accm_end = time.perf_counter()
         return
 
+    @staticmethod
+    def print_metrics(metrics: Dict, name: str, is_full: bool) -> str:
+        '''show metrics for each IoU thresholf
+        '''
+        text = ''
+        if is_full:
+            threads = [100 - (i * 5) for i in range(11)]
+        else:
+            threads = [100, 75, 50]
+        for th_ind in threads:
+            val = metrics[th_ind]
+            if th_ind == 100:
+                text += f'{name} @ [IoU=0.50:0.95] = {val:<5.3}\n'
+            else:
+                text += f'{name} @ [IoU=0.{th_ind}     ] = {val:<5.3}\n'
+        return text
+
     def __str__(self: Evaluator) -> str:
-        text = '===== mean Average Precision (mAP) =====\n'
+        '''show all the evaluated metrics
+
+        Returns:
+            str: text to print out
+        '''
+        text = '===== Evaluation Results =====\n'
         if self.load_start is None or self.load_end is None:
             text += 'Loading json lines format files is not done\n'
             return text
@@ -223,14 +249,10 @@ class Evaluator(object):
         text += f'Loading bounding boxes: {elapsed_load:.3} sec\n'
         text += f'Evaluating bounding boxes: {elapsed_eval:.3} sec\n'
         text += f'Accumulating evaluation result: {elapsed_accm:.3} sec\n'
-        text += '=== class: all ===\n'
-        for i in range(11):
-            th_ind = 100 - (i * 5)
-            ap = self.aps[th_ind]
-            if th_ind == 100:
-                text += f'mAP @ [IoU=0.50:0.95] = {ap:<5.3}\n'
-            else:
-                text += f'mAP @ [IoU=0.{th_ind}     ] = {ap:<5.3}\n'
+        text += '===== mean Average Precision (mAP) =====\n'
+        text += self.print_metrics(
+            metrics=self.aps, name='mAP', is_full=True
+        )
         if not self.verbose:
             return text
         for class_id, base in sorted(self.bases.items()):
@@ -238,12 +260,9 @@ class Evaluator(object):
             text += f'# of Ground Truth = {base.n_true}\n'
             text += f'# of Prediction   = {base.n_pred}\n'
             text += f'# of Image        = {base.n_img}\n'
-            for th_ind in [100, 75, 50]:
-                ap = base.aps[th_ind]
-                if th_ind == 100:
-                    text += f'mAP @ [IoU=0.50:0.95] = {ap:<5.3}\n'
-                else:
-                    text += f'mAP @ [IoU=0.{th_ind}     ] = {ap:<5.3}\n'
+            text += self.print_metrics(
+                metrics=base.aps, name='mAP', is_full=False
+            )
         return text
 
 
