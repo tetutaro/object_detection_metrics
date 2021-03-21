@@ -328,7 +328,7 @@ def main() -> None:
     )
     parser.add_argument(
         '--verbose', '-v', action='store_true',
-        help='output mAP for each category'
+        help='output AP for each category'
     )
     args = parser.parse_args()
     evaluator = Evaluator(**vars(args))
