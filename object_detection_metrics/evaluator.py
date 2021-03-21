@@ -34,8 +34,12 @@ class Evaluator(object):
             it may have unused category ids because
             object detection may not be made on
             all images of ground truths.
-        aps (Dict[int, float]):
-            Average Precisions per IoU threshold.
+        macro_maps (Dict[int, float]):
+            macro mean Average Precisions per IoU threshold.
+            the values of key are int(threshold * 100).
+            value 100 of key means IoU=0.50:0.95:0.05
+        weighted_maps (Dict[int, float]):
+            weighted mean Average Precisions per IoU threshold.
             the values of key are int(threshold * 100).
             value 100 of key means IoU=0.50:0.95:0.05
         load_start (float): time to start loading
@@ -81,7 +85,8 @@ class Evaluator(object):
         # initialize internal attributes
         self.categories = dict()
         self.unique_categories = None
-        self.aps = defaultdict(float)
+        self.macro_maps = defaultdict(float)
+        self.weighted_maps = defaultdict(float)
         self.load_start = None
         self.load_end = None
         self.eval_start = None
@@ -199,16 +204,25 @@ class Evaluator(object):
                 # calc Average Precision for each category
                 category.accumulate()
         # accumulate all Average Precisions
-        aps_all = list()
+        macro_maps_all = list()
+        weighted_maps_all = list()
         for i in range(10):
             th_ind = 50 + (i * 5)
+            trues = list()
             aps = list()
             for category in self.categories.values():
+                trues.append(category.n_true)
                 aps.append(category.aps[th_ind])
-            ap = np.array(aps).mean()
-            self.aps[th_ind] = ap
-            aps_all.append(ap)
-        self.aps[100] = np.array(aps_all).mean()
+            trues = np.array(trues)
+            aps = np.array(aps)
+            macro_map = aps.mean()
+            weighted_map = (trues * aps).sum() / trues.sum()
+            self.macro_maps[th_ind] = macro_map
+            self.weighted_maps[th_ind] = weighted_map
+            macro_maps_all.append(macro_map)
+            weighted_maps_all.append(weighted_map)
+        self.macro_maps[100] = np.array(macro_maps_all).mean()
+        self.weighted_maps[100] = np.array(weighted_maps_all).mean()
         self.accm_end = time.perf_counter()
         return
 
@@ -253,7 +267,14 @@ class Evaluator(object):
         text += f'Accumulating evaluation result: {elapsed_accm:.3} sec\n'
         text += '===== mean Average Precision (mAP) =====\n'
         text += self.print_metrics(
-            metrics=self.aps, name='mAP', is_full=True
+            metrics=self.macro_maps,
+            name='macro mAP',
+            is_full=True
+        )
+        text += self.print_metrics(
+            metrics=self.weighted_maps,
+            name='weighted mAP',
+            is_full=True
         )
         if not self.verbose:
             return text
@@ -263,7 +284,9 @@ class Evaluator(object):
             text += f'# of Prediction   = {category.n_pred}\n'
             text += f'# of Image        = {category.n_img}\n'
             text += self.print_metrics(
-                metrics=category.aps, name='mAP', is_full=False
+                metrics=category.aps,
+                name='AP',
+                is_full=False
             )
         return text
 
