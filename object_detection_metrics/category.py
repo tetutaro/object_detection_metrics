@@ -290,3 +290,31 @@ class Category(object):
         # calc Average Precision of IoU=0.50:0.95:0.05 and store it
         self.aps[100] = np.array(aps_all).mean()
         return
+
+
+class CategoryTotal(Category):
+    '''class to calc micro mean Average Precision
+
+    Attributes:
+        n_true (int): the number of ground truth bounding boxes
+        n_pred (int): the number of predicted bounding boxes
+        n_img (int): the number of images
+        tps (Dict[int, List[np.ndarray]]):
+            True-Positives (True-Positives and confidence score)
+            per IoU threshold.
+            the values of key are int(threshold * 100).
+            value 100 of key means IoU=0.50:0.95:0.05
+        aps (Dict[int, float]):
+            micro mean Average Precisions per IoU threshold.
+            the values of key are int(threshold * 100).
+            value 100 of key means IoU=0.50:0.95:0.05
+    '''
+    def __init__(self: CategoryTotal):
+        '''initialize function of TotalCategories class
+        '''
+        self.n_true = 0
+        self.n_pred = 0
+        self.n_img = 0
+        self.tps = defaultdict(list)
+        self.aps = defaultdict(float)
+        return

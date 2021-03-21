@@ -9,7 +9,7 @@ import simplejson as json
 import numpy as np
 from pydantic import BaseModel
 from .bboxes import GroundTruth, Prediction
-from .category import Category
+from .category import Category, CategoryTotal
 import argparse
 from logging import getLogger, StreamHandler, Formatter, INFO
 
@@ -85,6 +85,7 @@ class Evaluator(object):
         # initialize internal attributes
         self.categories = dict()
         self.unique_categories = None
+        self.category_total = CategoryTotal()
         self.macro_maps = defaultdict(float)
         self.weighted_maps = defaultdict(float)
         self.load_start = None
@@ -171,6 +172,7 @@ class Evaluator(object):
             true = trues.get(image_id)
             if true is None:
                 continue
+            self.category_total.n_img += 1
             # convert GroundTruth and Prediction to np.ndarray
             # pred is sorted in descending order of confidence score
             true_bboxes = true.to_ndarray()
@@ -203,7 +205,20 @@ class Evaluator(object):
             else:
                 # calc Average Precision for each category
                 category.accumulate()
-        # accumulate all Average Precisions
+                # copy each category's data to category_total
+                self.category_total.n_true += category.n_true
+                self.category_total.n_pred += category.n_pred
+                for i in range(10):
+                    th_ind = 50 + (i * 5)
+                    tps = category.tps[th_ind]
+                    if len(tps) == 0:
+                        continue
+                    self.category_total.tps[th_ind].append(
+                        np.concatenate(tps, axis=0)
+                    )
+        # calc micro mean Average Precisions
+        self.category_total.accumulate()
+        # calc macro & weighted mean Average Precisions
         macro_maps_all = list()
         weighted_maps_all = list()
         for i in range(10):
@@ -265,24 +280,32 @@ class Evaluator(object):
         text += f'Loading bounding boxes: {elapsed_load:.3} sec\n'
         text += f'Evaluating bounding boxes: {elapsed_eval:.3} sec\n'
         text += f'Accumulating evaluation result: {elapsed_accm:.3} sec\n'
+        text += f'# of Image        = {self.category_total.n_img}\n'
+        text += f'# of Ground Truth = {self.category_total.n_true}\n'
+        text += f'# of Prediction   = {self.category_total.n_pred}\n'
         text += '===== mean Average Precision (mAP) =====\n'
+        text += self.print_metrics(
+            metrics=self.category_total.aps,
+            name='micro mAP',
+            is_full=self.verbose
+        )
         text += self.print_metrics(
             metrics=self.macro_maps,
             name='macro mAP',
-            is_full=True
+            is_full=self.verbose
         )
         text += self.print_metrics(
             metrics=self.weighted_maps,
             name='weighted mAP',
-            is_full=True
+            is_full=self.verbose
         )
         if not self.verbose:
             return text
         for category_id, category in sorted(self.categories.items()):
             text += f'=== category: {category_id} ===\n'
+            text += f'# of Image        = {category.n_img}\n'
             text += f'# of Ground Truth = {category.n_true}\n'
             text += f'# of Prediction   = {category.n_pred}\n'
-            text += f'# of Image        = {category.n_img}\n'
             text += self.print_metrics(
                 metrics=category.aps,
                 name='AP',
