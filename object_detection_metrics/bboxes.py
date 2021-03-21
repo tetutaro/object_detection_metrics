@@ -10,16 +10,16 @@ class TrueBBox(BaseModel):
     '''ground truth bounding box
 
     Attributes:
-        class_id (str): id of detected object
+        category_id (str): id of detected object
         bbox (List): bouding box (min_x, min_y, max_x, max_y)
     '''
-    class_id: int
+    category_id: int
     bbox: List[Union[int, float]]
 
-    @validator('class_id')
-    def check_class_id(cls: TrueBBox, v: int) -> int:
+    @validator('category_id')
+    def check_category_id(cls: TrueBBox, v: int) -> int:
         if v < 0:
-            raise ValueError('class_id must be >= 0')
+            raise ValueError('category_id must be >= 0')
         return v
 
     @validator('bbox')
@@ -43,11 +43,11 @@ class PredBBox(TrueBBox):
     '''predicted bounding box
 
     Attributes:
-        class_id (str): id of detected object
+        category_id (str): id of detected object
         bbox (List): bouding box (min_x, min_y, max_x, max_y)
         score: confidence score
     '''
-    class_id: int
+    category_id: int
     bbox: List[Union[int, float]]
     score: float
 
@@ -72,7 +72,7 @@ class GroundTruth(BaseModel):
         '''convert Prediction to np.ndarray
 
         * column 0-3: bounding boxes (min_x, min_y, max_x, max_y)
-        * column 4: class ids
+        * column 4: category ids
 
         Returns:
             np.ndarray: N x 6 matrix
@@ -85,13 +85,13 @@ class GroundTruth(BaseModel):
             ])
         else:
             bboxes = np.empty((0, 4))
-        # class ids
-        classes = np.array([
-            bbox.class_id for bbox in self.bboxes
+        # category ids
+        categories = np.array([
+            bbox.category_id for bbox in self.bboxes
         ])[:, np.newaxis]
-        # unite bounding boxes and class ids
+        # unite bounding boxes and category ids
         array = np.concatenate(
-            (bboxes, classes), axis=1
+            (bboxes, categories), axis=1
         )
         return array
 
@@ -112,7 +112,7 @@ class Prediction(BaseModel):
 
         * column 0-3: bounding boxes (min_x, min_y, max_x, max_y)
         * column 4: confidence scores
-        * column 5: class ids
+        * column 5: category ids
         * predicted bouding boxes are sorted
           in descending order of confidence score
 
@@ -126,17 +126,17 @@ class Prediction(BaseModel):
             ])
         else:
             bboxes = np.empty((0, 4))
-        # class ids
-        classes = np.array([
-            bbox.class_id for bbox in self.bboxes
+        # category ids
+        categories = np.array([
+            bbox.category_id for bbox in self.bboxes
         ])[:, np.newaxis]
         # confidence scores
         scores = np.array([
             bbox.score for bbox in self.bboxes
         ])[:, np.newaxis]
-        # unite bounding boxes, confidence scores and class ids
+        # unite bounding boxes, confidence scores and cagetory ids
         array = np.concatenate(
-            (bboxes, scores, classes), axis=1
+            (bboxes, scores, categories), axis=1
         )
         # sort in descending order of confidence score
         return array[

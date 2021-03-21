@@ -11,15 +11,15 @@ from object_detection_metrics.bboxes import (
 class TestTrueBBox(TestCase):
     def test_true(self: TestTrueBBox) -> None:
         _ = TrueBBox(
-            class_id=0,
+            category_id=0,
             bbox=[1, 2, 3, 4]
         )
         _ = TrueBBox(
-            class_id=1,
+            category_id=1,
             bbox=[1.1, 2.2, 3.3, 4.4]
         )
         _ = TrueBBox(
-            class_id=0,
+            category_id=0,
             bbox=[1, 2, 3, 4],
             hoge='hogehoge'
         )
@@ -32,20 +32,20 @@ class TestTrueBBox(TestCase):
             )
         with self.assertRaises(ValidationError):
             _ = TrueBBox(
-                class_id=0,
+                category_id=0,
                 hoge='hogehoge'
             )
         return
 
-    def test_false_class_id(self: TestTrueBBox) -> None:
+    def test_false_category_id(self: TestTrueBBox) -> None:
         with self.assertRaises(ValidationError):
             _ = TrueBBox(
-                class_id='hoge',
+                category_id='hoge',
                 bbox=[1, 2, 3, 4]
             )
         with self.assertRaises(ValueError):
             _ = TrueBBox(
-                class_id=-1,
+                category_id=-1,
                 bbox=[1, 2, 3, 4]
             )
         return
@@ -53,47 +53,47 @@ class TestTrueBBox(TestCase):
     def test_false_bbox(self: TestTrueBBox) -> None:
         with self.assertRaises(ValidationError):
             _ = TrueBBox(
-                class_id=0,
+                category_id=0,
                 bbox=1.0
             )
         with self.assertRaises(ValidationError):
             _ = TrueBBox(
-                class_id=0,
+                category_id=0,
                 bbox='hoge',
             )
         with self.assertRaises(ValidationError):
             _ = TrueBBox(
-                class_id=0,
+                category_id=0,
                 bbox=[1, 2, 3, 'hoge']
             )
         with self.assertRaises(ValueError):
             _ = TrueBBox(
-                class_id=0,
+                category_id=0,
                 bbox=[1, 2, 3, -4]
             )
         with self.assertRaises(ValueError):
             _ = TrueBBox(
-                class_id=0,
+                category_id=0,
                 bbox=[1, 2, 3],
             )
         with self.assertRaises(ValueError):
             _ = TrueBBox(
-                class_id=0,
+                category_id=0,
                 bbox=[1, 2, 3, 4, 5]
             )
         with self.assertRaises(ValueError):
             _ = TrueBBox(
-                class_id=0,
+                category_id=0,
                 bbox=[3, 2, 1, 4]
             )
         with self.assertRaises(ValueError):
             _ = TrueBBox(
-                class_id=0,
+                category_id=0,
                 bbox=[1, 4, 3, 2]
             )
         with self.assertRaises(ValueError):
             _ = TrueBBox(
-                class_id=0,
+                category_id=0,
                 bbox=[3, 4, 1, 2]
             )
         return
@@ -102,17 +102,17 @@ class TestTrueBBox(TestCase):
 class TestPredBBox(TestCase):
     def test_true(self: TestPredBBox) -> None:
         _ = PredBBox(
-            class_id=0,
+            category_id=0,
             bbox=[1, 2, 3, 4],
             score=0.25
         )
         _ = PredBBox(
-            class_id=1,
+            category_id=1,
             bbox=[1.1, 2.2, 3.3, 4.4],
             score=0.75
         )
         _ = PredBBox(
-            class_id=0,
+            category_id=0,
             bbox=[1, 2, 3, 4],
             score=0.25,
             hoge='hogehoge'
@@ -127,27 +127,27 @@ class TestPredBBox(TestCase):
             )
         with self.assertRaises(ValidationError):
             _ = PredBBox(
-                class_id=0,
+                category_id=0,
                 score=0.25
             )
         with self.assertRaises(ValidationError):
             _ = PredBBox(
-                class_id=0,
+                category_id=0,
                 bbox=[1, 2, 3, 4],
                 hoge='hogehoge'
             )
         return
 
-    def test_false_class_id(self: TestPredBBox) -> None:
+    def test_false_category_id(self: TestPredBBox) -> None:
         with self.assertRaises(ValidationError):
             _ = PredBBox(
-                class_id='hoge',
+                category_id='hoge',
                 bbox=[1, 2, 3, 4],
                 score=0.25,
             )
         with self.assertRaises(ValueError):
             _ = PredBBox(
-                class_id=-1,
+                category_id=-1,
                 bbox=[1, 2, 3, 4],
                 score=0.25
             )
@@ -156,55 +156,55 @@ class TestPredBBox(TestCase):
     def test_false_bbox(self: TestPredBBox) -> None:
         with self.assertRaises(ValidationError):
             _ = PredBBox(
-                class_id=0,
+                category_id=0,
                 bbox=1.0,
                 score=0.25
             )
         with self.assertRaises(ValidationError):
             _ = PredBBox(
-                class_id=0,
+                category_id=0,
                 bbox='hoge',
                 score=0.25
             )
         with self.assertRaises(ValidationError):
             _ = PredBBox(
-                class_id=0,
+                category_id=0,
                 bbox=[1, 2, 3, 'hoge'],
                 score=0.25
             )
         with self.assertRaises(ValueError):
             _ = PredBBox(
-                class_id=0,
+                category_id=0,
                 bbox=[1, 2, 3, -4],
                 score=0.25
             )
         with self.assertRaises(ValueError):
             _ = PredBBox(
-                class_id=0,
+                category_id=0,
                 bbox=[1, 2, 3],
                 score=0.25
             )
         with self.assertRaises(ValueError):
             _ = PredBBox(
-                class_id=0,
+                category_id=0,
                 bbox=[1, 2, 3, 4, 5],
                 score=0.25
             )
         with self.assertRaises(ValueError):
             _ = PredBBox(
-                class_id=0,
+                category_id=0,
                 bbox=[3, 2, 1, 4],
                 score=0.25
             )
         with self.assertRaises(ValueError):
             _ = PredBBox(
-                class_id=0,
+                category_id=0,
                 bbox=[1, 4, 3, 2],
                 score=0.25
             )
         with self.assertRaises(ValueError):
             _ = PredBBox(
-                class_id=0,
+                category_id=0,
                 bbox=[3, 4, 1, 2],
                 score=0.25
             )
@@ -213,19 +213,19 @@ class TestPredBBox(TestCase):
     def test_false_score(self: TestPredBBox) -> None:
         with self.assertRaises(ValidationError):
             _ = PredBBox(
-                class_id=0,
+                category_id=0,
                 bbox=[1, 2, 3, 4],
                 score='hoge'
             )
         with self.assertRaises(ValidationError):
             _ = PredBBox(
-                class_id=0,
+                category_id=0,
                 bbox=[1, 2, 3, 4],
                 score=-0.5
             )
         with self.assertRaises(ValidationError):
             _ = PredBBox(
-                class_id=0,
+                category_id=0,
                 bbox=[1, 2, 3, 4],
                 score=1.5
             )
@@ -235,11 +235,11 @@ class TestPredBBox(TestCase):
 class TestGroundTruth(TestCase):
     bboxes = [
         {
-            'class_id': 0,
+            'category_id': 0,
             'bbox': [1, 2, 3, 4],
         },
         {
-            'class_id': 1,
+            'category_id': 1,
             'bbox': [1.1, 2.2, 3.3, 4.4],
         },
     ]
@@ -248,11 +248,11 @@ class TestGroundTruth(TestCase):
             'image_id': '1234',
             'bboxes': [
                 {
-                    'class_id': 0,
+                    'category_id': 0,
                     'bbox': [1, 2, 3, 4],
                 },
                 {
-                    'class_id': 1,
+                    'category_id': 1,
                     'bbox': [1.1, 2.2, 3.3, 4.4],
                 },
             ],
@@ -304,12 +304,12 @@ class TestGroundTruth(TestCase):
 class TestPrediction(TestCase):
     bboxes = [
         {
-            'class_id': 0,
+            'category_id': 0,
             'bbox': [1, 2, 3, 4],
             'score': 0.25,
         },
         {
-            'class_id': 1,
+            'category_id': 1,
             'bbox': [1.1, 2.2, 3.3, 4.4],
             'score': 0.75,
         },
@@ -319,12 +319,12 @@ class TestPrediction(TestCase):
             'image_id': '1234',
             'bboxes': [
                 {
-                    'class_id': 0,
+                    'category_id': 0,
                     'bbox': [1, 2, 3, 4],
                     'score': 0.25,
                 },
                 {
-                    'class_id': 1,
+                    'category_id': 1,
                     'bbox': [1.1, 2.2, 3.3, 4.4],
                     'score': 0.75,
                 },

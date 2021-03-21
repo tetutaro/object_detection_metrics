@@ -5,15 +5,15 @@ from collections import defaultdict
 import numpy as np
 
 
-class BaseEval(object):
-    '''the basis of evaluation per class id
+class Category(object):
+    '''the basis of evaluation per category id
 
     Attributes:
-        class_id (int): class id of detected object
+        category_id (int): category id of detected object
         n_true (int): the number of ground truth bounding boxes
         n_pred (int): the number of predicted bounding boxes
         n_img (int): the number of images which has bouding box
-                     of the class id (either ground truth or prediction)
+                     of the category id (either ground truth or prediction)
         tps (Dict[int, List[np.ndarray]]):
             True-Positives (True-Positives and confidence score)
             per IoU threshold.
@@ -25,16 +25,16 @@ class BaseEval(object):
             value 100 of key means IoU=0.50:0.95:0.05
     '''
     def __init__(
-        self: BaseEval,
-        class_id: int,
+        self: Category,
+        category_id: int,
     ) -> None:
-        '''initialize function of BaseEval
+        '''initialize function of Category
 
         Args:
-            class_id (int): class id of detected object
+            category_id (int): category id of detected object
         '''
         # store given values
-        self.class_id = class_id
+        self.category_id = category_id
         # initialize internal attributes
         self.n_true = 0
         self.n_pred = 0
@@ -134,11 +134,11 @@ class BaseEval(object):
         return np.where(masked > 0, 1, 0).sum(axis=1)[:, np.newaxis]
 
     def append(
-        self: BaseEval,
+        self: Category,
         true: np.ndarray,
         pred: np.ndarray
     ) -> None:
-        '''calc the basis of evaluation for each class id
+        '''calc the basis of evaluation for each category id
 
         * store # of ground truths, predictions
         * calc IoU between ground truths and predictions
@@ -229,7 +229,7 @@ class BaseEval(object):
             base_x = area_point[0]
         return auc
 
-    def calc_ap(self: BaseEval, tps: np.ndarray) -> float:
+    def calc_ap(self: Category, tps: np.ndarray) -> float:
         '''calculate Average Precision
 
         Args:
@@ -254,8 +254,8 @@ class BaseEval(object):
         ap = self.calc_auc(x=recall[::-1], y=precision[::-1])
         return ap
 
-    def accumulate(self: BaseEval) -> None:
-        '''calc Average Precision of each IoU threshold for each class id
+    def accumulate(self: Category) -> None:
+        '''calc Average Precision of each IoU threshold for each category id
 
         * calc Average Precisions for each IoU threshold
         * store it to self.aps

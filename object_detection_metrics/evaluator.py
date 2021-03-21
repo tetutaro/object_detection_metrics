@@ -9,7 +9,7 @@ import simplejson as json
 import numpy as np
 from pydantic import BaseModel
 from .bboxes import GroundTruth, Prediction
-from .calc import BaseEval
+from .category import Category
 import argparse
 from logging import getLogger, StreamHandler, Formatter, INFO
 
@@ -27,9 +27,11 @@ class Evaluator(object):
 
     Attributes:
         verbose (bool): print verbosely
-        unique_classes (List):
-            unique class ids of detected objects.
-            it may have unused class ids because
+        categories (Dict[int, Category]):
+            store Category class
+        unique_categories (List[int]):
+            unique category ids of detected objects.
+            it may have unused category ids because
             object detection may not be made on
             all images of ground truths.
         aps (Dict[int, float]):
@@ -77,7 +79,8 @@ class Evaluator(object):
         # store given values
         self.verbose = verbose
         # initialize internal attributes
-        self.unique_classes = None
+        self.categories = dict()
+        self.unique_categories = None
         self.aps = defaultdict(float)
         self.load_start = None
         self.load_end = None
@@ -92,18 +95,18 @@ class Evaluator(object):
     def _load_jsonl(
         path: str,
         model: BaseModel,
-        uniq_classes: set
+        uniq_categories: set
     ) -> Dict:
         ''' read json lines format file
 
         * read json lines format file
         * cast each entry (= image) to the given BaseModel class
-        * regist class id of each bouding box to uniq_classes
+        * regist category id of each bouding box to uniq_categories
 
         Args:
             path (str): path of json lines format file
             model (BaseModel): the BaseModel to cast image data
-            uniq_classes (set): unique class ids of bounding box
+            uniq_categories (set): unique category ids of bounding box
 
         Returns:
             Dict[str, BaseModel]: dictionary of image_id(str) to BaseModel
@@ -121,7 +124,7 @@ class Evaluator(object):
                     logger.warning(msg)
                 else:
                     for bbox in entry.bboxes:
-                        uniq_classes.add(bbox.class_id)
+                        uniq_categories.add(bbox.category_id)
                     entries[entry.image_id] = entry
                 finally:
                     raw = rf.readline()
@@ -131,7 +134,7 @@ class Evaluator(object):
         '''load files and calc its basic values for evaluation
 
         * load json lines format file of ground truth and predictions
-        * devide bouding boxes by class id for each image
+        * devide bouding boxes by category id for each image
         * call EvalBase.append (calc IoU and True-Positive and store them)
 
         Args:
@@ -140,24 +143,23 @@ class Evaluator(object):
             path_pred (str):
                 path of json lines format file of predictions
         '''
-        uniq_classes = set()
+        uniq_categories = set()
         self.load_start = time.perf_counter()
         # load json lines format file
         trues = self._load_jsonl(
-            path=path_true, model=GroundTruth, uniq_classes=uniq_classes
+            path=path_true, model=GroundTruth, uniq_categories=uniq_categories
         )
         preds = self._load_jsonl(
-            path=path_pred, model=Prediction, uniq_classes=uniq_classes
+            path=path_pred, model=Prediction, uniq_categories=uniq_categories
         )
         self.load_end = time.perf_counter()
-        self.unique_classes = sorted(list(uniq_classes))
+        self.unique_categories = sorted(list(uniq_categories))
         # check image_ids are unique in each data
         assert len(list(trues.keys())) == len(set(trues.keys()))
         assert len(list(preds.keys())) == len(set(preds.keys()))
-        # create BaseEval for each class
-        self.bases = dict()
-        for class_id in self.unique_classes:
-            self.bases[class_id] = BaseEval(class_id=class_id)
+        # create Category class for each category
+        for category_id in self.unique_categories:
+            self.categories[category_id] = Category(category_id=category_id)
         self.eval_start = time.perf_counter()
         # get GroundTruth and Prediction which has the same image_id
         for image_id, pred in preds.items():
@@ -168,16 +170,16 @@ class Evaluator(object):
             # pred is sorted in descending order of confidence score
             true_bboxes = true.to_ndarray()
             pred_bboxes = pred.to_ndarray()
-            # divide bounding boxes by class_id
-            for class_id in self.unique_classes:
-                true_index = (true_bboxes[:, 4] == class_id)
+            # divide bounding boxes by category_id
+            for category_id in self.unique_categories:
+                true_index = (true_bboxes[:, 4] == category_id)
                 true_count = true_index.astype(int).sum()
-                pred_index = (pred_bboxes[:, 5] == class_id)
+                pred_index = (pred_bboxes[:, 5] == category_id)
                 pred_count = pred_index.astype(int).sum()
                 if true_count == 0 and pred_count == 0:
                     continue
-                # calc IoU, True-Positive for each image and class
-                self.bases[class_id].append(
+                # calc IoU, True-Positive for each image and category
+                self.categories[category_id].append(
                     true=true_bboxes[true_index][:, :-1],
                     pred=pred_bboxes[pred_index][:, :-1]
                 )
@@ -188,21 +190,21 @@ class Evaluator(object):
         '''accumulate all Average Precisions
         '''
         self.accm_start = time.perf_counter()
-        for class_id in self.unique_classes:
-            base = self.bases[class_id]
-            if base.n_true == 0 and base.n_pred == 0:
-                # delete unused class id
-                del self.bases[class_id]
+        for category_id in self.unique_categories:
+            category = self.categories[category_id]
+            if category.n_true == 0 and category.n_pred == 0:
+                # delete unused category id
+                del self.categories[category_id]
             else:
-                # calc Average Precision for each class
-                base.accumulate()
+                # calc Average Precision for each category
+                category.accumulate()
         # accumulate all Average Precisions
         aps_all = list()
         for i in range(10):
             th_ind = 50 + (i * 5)
             aps = list()
-            for base in self.bases.values():
-                aps.append(base.aps[th_ind])
+            for category in self.categories.values():
+                aps.append(category.aps[th_ind])
             ap = np.array(aps).mean()
             self.aps[th_ind] = ap
             aps_all.append(ap)
@@ -255,13 +257,13 @@ class Evaluator(object):
         )
         if not self.verbose:
             return text
-        for class_id, base in sorted(self.bases.items()):
-            text += f'=== class: {class_id} ===\n'
-            text += f'# of Ground Truth = {base.n_true}\n'
-            text += f'# of Prediction   = {base.n_pred}\n'
-            text += f'# of Image        = {base.n_img}\n'
+        for category_id, category in sorted(self.categories.items()):
+            text += f'=== category: {category_id} ===\n'
+            text += f'# of Ground Truth = {category.n_true}\n'
+            text += f'# of Prediction   = {category.n_pred}\n'
+            text += f'# of Image        = {category.n_img}\n'
             text += self.print_metrics(
-                metrics=base.aps, name='mAP', is_full=False
+                metrics=category.aps, name='mAP', is_full=False
             )
         return text
 
@@ -280,7 +282,7 @@ def main() -> None:
     )
     parser.add_argument(
         '--verbose', '-v', action='store_true',
-        help='output mAP for each class'
+        help='output mAP for each category'
     )
     args = parser.parse_args()
     evaluator = Evaluator(**vars(args))

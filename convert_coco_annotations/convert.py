@@ -34,7 +34,7 @@ class Converter(object):
             for ann in anns['annotations']:
                 image_id = '%012d' % ann['image_id']
                 self.bboxes[image_id].append({
-                    'class_id': ann['category_id'],
+                    'category_id': ann['category_id'],
                     'bbox': self.convert_xywh_xyxy(ann['bbox']),
                 })
         elif isinstance(anns, list):
@@ -42,7 +42,7 @@ class Converter(object):
             for ann in anns:
                 image_id = '%012d' % ann['image_id']
                 self.bboxes[image_id].append({
-                    'class_id': ann['category_id'],
+                    'category_id': ann['category_id'],
                     'bbox': self.convert_xywh_xyxy(ann['bbox']),
                     'score': ann['score'],
                 })
