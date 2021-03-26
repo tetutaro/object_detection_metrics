@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 from __future__ import annotations
-from typing import List, Union, Optional
+from typing import Optional
 import os
 from collections import defaultdict
 import simplejson as json
@@ -34,32 +34,21 @@ class Converter(object):
             for ann in anns['annotations']:
                 image_id = '%012d' % ann['image_id']
                 self.bboxes[image_id].append({
-                    'category_id': ann['category_id'],
-                    'bbox': self.convert_xywh_xyxy(ann['bbox']),
+                    'category_id': int(ann['category_id']),
+                    'bbox': [float(x) for x in ann['bbox']],
                 })
         elif isinstance(anns, list):
             # (fake) prediction result
             for ann in anns:
                 image_id = '%012d' % ann['image_id']
                 self.bboxes[image_id].append({
-                    'category_id': ann['category_id'],
-                    'bbox': self.convert_xywh_xyxy(ann['bbox']),
-                    'score': ann['score'],
+                    'category_id': int(ann['category_id']),
+                    'bbox': [float(x) for x in ann['bbox']],
+                    'score': float(ann['score']),
                 })
         else:
             raise ValueError('invalid file type')
         return
-
-    @staticmethod
-    def convert_xywh_xyxy(
-        xywh: List[Union[int, float]]
-    ) -> List[float]:
-        return [
-            float(xywh[0]),
-            float(xywh[1]),
-            float(xywh[0] + xywh[2]),
-            float(xywh[1] + xywh[3])
-        ]
 
     def save(self: Converter) -> None:
         with open(self.output, 'wt') as wf:

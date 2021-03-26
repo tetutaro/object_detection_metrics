@@ -50,7 +50,7 @@ class Category(object):
         * calc IoU of bounding boxes (ground truth and prediction) at once
         * If number of prediction is N and number of ground truth is M,
           this function produces N x M matrix (IoU matrix)
-        * bounding boxes must be written as (min_x, min_y, max_x, max_y)
+        * bounding boxes must be written as (min_x, min_y, width, height)
 
         Args:
             true (np.ndarray): bounding boxes of ground truth (M x 4)
@@ -61,13 +61,18 @@ class Category(object):
         '''
         assert len(true.shape) == len(pred.shape) == 2
         assert true.shape[1] == pred.shape[1] == 4
+        # convert xywh -> xyxy
+        true_xyxy = true.copy()
+        true_xyxy[:, 2:4] += true[:, 0:2]
+        pred_xyxy = pred.copy()
+        pred_xyxy[:, 2:4] += pred[:, 0:2]
         # expand bouding boxes to N x M x 4
         ex_like = np.zeros((pred.shape[0], true.shape[0], pred.shape[1]))
         ex_true = np.full_like(
-            ex_like, true[np.newaxis, :, :], dtype=np.float
+            ex_like, true_xyxy[np.newaxis, :, :], dtype=np.float
         )
         ex_pred = np.full_like(
-            ex_like, pred[:, np.newaxis, :], dtype=np.float
+            ex_like, pred_xyxy[:, np.newaxis, :], dtype=np.float
         )
         # calc the area of bouding boxes
         area_true = (

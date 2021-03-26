@@ -11,7 +11,7 @@ class TrueBBox(BaseModel):
 
     Attributes:
         category_id (str): id of detected object
-        bbox (List): bouding box (min_x, min_y, max_x, max_y)
+        bbox (List): bouding box (min_x, min_y, width, height)
     '''
     category_id: int
     bbox: List[Union[int, float]]
@@ -32,10 +32,10 @@ class TrueBBox(BaseModel):
         for vv in v:
             if vv < 0:
                 raise ValueError('position must be >= 0')
-        if v[0] > v[2]:
-            raise ValueError(f'minx({v[0]}) is greater than maxx({v[2]})')
-        if v[1] > v[3]:
-            raise ValueError(f'miny({v[1]}) is greater than maxy({v[3]})')
+        if v[2] < 0:
+            raise ValueError(f'width({v[2]}) must be positive')
+        if v[3] < 0:
+            raise ValueError(f'height({v[3]}) must be positive')
         return [float(x) for x in v]
 
 
@@ -44,7 +44,7 @@ class PredBBox(TrueBBox):
 
     Attributes:
         category_id (str): id of detected object
-        bbox (List): bouding box (min_x, min_y, max_x, max_y)
+        bbox (List): bouding box (min_x, min_y, width, height)
         score: confidence score
     '''
     category_id: int
@@ -71,7 +71,7 @@ class GroundTruth(BaseModel):
     def to_ndarray(self: GroundTruth) -> np.ndarray:
         '''convert Prediction to np.ndarray
 
-        * column 0-3: bounding boxes (min_x, min_y, max_x, max_y)
+        * column 0-3: bounding boxes (min_x, min_y, width, height)
         * column 4: category ids
 
         Returns:
@@ -110,7 +110,7 @@ class Prediction(BaseModel):
     def to_ndarray(self: Prediction) -> np.ndarray:
         '''convert Prediction to np.ndarray
 
-        * column 0-3: bounding boxes (min_x, min_y, max_x, max_y)
+        * column 0-3: bounding boxes (min_x, min_y, width, height)
         * column 4: confidence scores
         * column 5: category ids
         * predicted bouding boxes are sorted

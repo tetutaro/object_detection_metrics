@@ -123,7 +123,7 @@ Average Precision of the category ID at IoU threshold is 0.50:0.95:0.05
         {
             \\ category ID of detected object (int)
             "category_id": 1,
-            \\ bouding box (min_x, min_y, max_x, max_y) in pixel
+            \\ bouding box (min_x, min_y, width, height) in pixel
             "bbox": [10.1, 20.2, 30.3, 40.4]
         },
         ...
@@ -143,7 +143,7 @@ Average Precision of the category ID at IoU threshold is 0.50:0.95:0.05
         {
             \\ category ID of detected object (int)
             "category_id": 1,
-            \\ bouding box (min_x, min_y, max_x, max_y) in pixel
+            \\ bouding box (min_x, min_y, width, height) in pixel
             "bbox": [10.1, 20.2, 30.3, 40.4],
             \\ confidence score (float)
             "score": 0.85
