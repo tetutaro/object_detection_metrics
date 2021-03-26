@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 from __future__ import annotations
-from typing import Dict
+from typing import Dict, Optional, TextIO
 import os
 import time
 from collections import defaultdict
@@ -26,6 +26,8 @@ class Evaluator(object):
     '''main class of evaluating object detection algorithm
 
     Attributes:
+        outfn (Optional[str]):
+            output filename. if outfn is None, just print metrics
         verbose (bool): print verbosely
         categories (Dict[int, Category]):
             store Category class
@@ -54,6 +56,7 @@ class Evaluator(object):
         self: Evaluator,
         trues: str,
         preds: str,
+        output: Optional[str] = None,
         verbose: bool = False
     ) -> None:
         '''initialize function of Evaluator
@@ -80,6 +83,18 @@ class Evaluator(object):
         if not preds.endswith('.jsonl'):
             msg = f'preds({preds}) must be json lines format'
             raise ValueError(msg)
+        # set output
+        if output is None:
+            self.outfn = os.path.join(
+                os.path.dirname(preds), 'scores.jsonl'
+            )
+        elif output == 'none':
+            self.outfn = None
+        else:
+            if not output.endswith('.jsonl'):
+                msg = f'output({output}) must be json lines format'
+                raise ValueError(msg)
+            self.outfn = output
         # store given values
         self.verbose = verbose
         # initialize internal attributes
@@ -242,6 +257,64 @@ class Evaluator(object):
         return
 
     @staticmethod
+    def write_metrics(
+        fp: TextIO,
+        metrics: Dict,
+        name: str,
+        category: str
+    ) -> None:
+        for i in range(11):
+            th_ind = 50 + (i * 5)
+            score = float(metrics[th_ind])
+            if i == 10:
+                threshold = '0.50:0.95'
+            else:
+                threshold = f'0.{th_ind}'
+            ret = {
+                'metric': name,
+                'category': category,
+                'iou_threshold': threshold,
+                'score': score,
+            }
+            fp.write(json.dumps(ret) + '\n')
+        return
+
+    def output(self: Evaluator) -> None:
+        '''output metrics
+        '''
+        if self.outfn is None:
+            print(self)
+            return
+        wf = open(self.outfn, 'wt')
+        self.write_metrics(
+            fp=wf,
+            metrics=self.category_total.aps,
+            name='micro mAP',
+            category='all'
+        )
+        self.write_metrics(
+            fp=wf,
+            metrics=self.macro_maps,
+            name='macro mAP',
+            category='all'
+        )
+        self.write_metrics(
+            fp=wf,
+            metrics=self.weighted_maps,
+            name='weighted mAP',
+            category='all'
+        )
+        for category_id, category in sorted(self.categories.items()):
+            self.write_metrics(
+                fp=wf,
+                metrics=category.aps,
+                name='AP',
+                category=str(category_id)
+            )
+        wf.close()
+        return
+
+    @staticmethod
     def print_metrics(metrics: Dict, name: str, is_full: bool) -> str:
         '''show metrics for each IoU thresholf
         '''
@@ -327,11 +400,15 @@ def main() -> None:
         help='the file of predicted bounding boxes'
     )
     parser.add_argument(
+        '--output', '-o', default=None, type=str,
+        help='output filename (.jsonl) (if -o none, just print metrics)'
+    )
+    parser.add_argument(
         '--verbose', '-v', action='store_true',
         help='output AP for each category'
     )
     args = parser.parse_args()
     evaluator = Evaluator(**vars(args))
     evaluator.accumulate()
-    print(evaluator)
+    evaluator.output()
     return

@@ -48,7 +48,7 @@ optional arguments:
 ### calculate metrics using the command line application
 
 ```
-usage: object_detection_metrics [-h] --trues TRUES --preds PREDS [--verbose]
+usage: object_detection_metrics [-h] --trues TRUES --preds PREDS [--output OUTPUT] [--verbose]
 
 calculate metrics used to evaluate object detection
 
@@ -58,6 +58,8 @@ optional arguments:
                         the file of ground truth bounding boxes
   --preds PREDS, -p PREDS
                         the file of predicted bounding boxes
+  --output OUTPUT, -o OUTPUT
+                        output filename (.jsonl) (if -o none, just print metrics)
   --verbose, -v         output AP for each category
 ```
 
