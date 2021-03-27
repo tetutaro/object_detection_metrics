@@ -2,6 +2,12 @@
 
 calculate metrics used to evaluate object detection algorithms.
 
+## articles corresponding this repository (Qiita)
+
+following articles were written in Japanese only.
+
+- [mAP (mean Average Precision) について考える](https://qiita.com/tetutaro/items/e907339387329130a4fa)
+
 ## metrics
 
 - micro mean Average Precision (micro-mAP):
